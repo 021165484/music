@@ -3,55 +3,103 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taurus Music Player</title>
+<title>Taurus Spotify Pro</title>
 
 <style>
 body{
     margin:0;
     background:#000;
-    color:white;
     font-family:Arial;
+    overflow:hidden;
+    color:white;
+}
+
+/* 星空背景 */
+canvas{
+    position:fixed;
+    top:0;
+    left:0;
+    z-index:0;
+}
+
+/* 居中排版 */
+.wrapper{
+    position:relative;
+    z-index:1;
+    height:100vh;
     display:flex;
     justify-content:center;
     align-items:center;
-    height:100vh;
 }
 
+/* Spotify 卡片 */
 .player{
-    width:350px;
-    background:#111;
+    width:340px;
+    background:#121212;
     border-radius:20px;
-    padding:20px;
+    padding:22px;
     text-align:center;
-    box-shadow:0 0 30px rgba(255,255,255,.15);
+    box-shadow:0 0 40px rgba(0,0,0,0.8);
+    transition:0.25s;
+}
+
+.player:hover{
+    transform:translateY(-5px);
+    box-shadow:0 0 60px rgba(29,185,84,0.15);
 }
 
 .cover{
     width:250px;
     height:250px;
+    border-radius:16px;
     object-fit:cover;
-    border-radius:15px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.6);
 }
 
 h2{
-    margin-top:15px;
+    margin:12px 0 5px;
+    font-size:20px;
 }
 
+/* 按鈕 */
 button{
-    margin-top:15px;
-    padding:10px 25px;
+    margin-top:12px;
+    padding:10px 28px;
     border:none;
-    border-radius:10px;
+    border-radius:999px;
     cursor:pointer;
-    font-size:18px;
+    font-size:15px;
+    background:#1db954;
+    color:black;
+    font-weight:bold;
+    transition:0.2s;
 }
 
+button:hover{
+    transform:scale(1.07);
+}
+
+/* 進度條（Spotify風格） */
 input[type=range]{
     width:100%;
+    margin-top:12px;
+    accent-color:#1db954;
+}
+
+/* 小標 */
+.label{
+    font-size:12px;
+    color:#aaa;
+    margin-top:10px;
 }
 </style>
 </head>
+
 <body>
+
+<canvas id="bg"></canvas>
+
+<div class="wrapper">
 
 <div class="player">
 
@@ -63,59 +111,130 @@ input[type=range]{
 
 <button id="playBtn">▶ Play</button>
 
-<br><br>
-
 <input type="range" id="progress" value="0">
 
-<br><br>
+<div class="label">Volume</div>
+<input type="range" id="volume" min="0" max="1" step="0.01" value="1">
 
-Volume
-
-<input type="range" id="volume"
-min="0"
-max="1"
-step="0.01"
-value="1">
+</div>
 
 </div>
 
 <script>
 
-const audio=document.getElementById("audio");
-const playBtn=document.getElementById("playBtn");
-const progress=document.getElementById("progress");
-const volume=document.getElementById("volume");
+/* =======================
+   播放器（優化不卡頓）
+======================= */
+const audio = document.getElementById("audio");
+const playBtn = document.getElementById("playBtn");
+const progress = document.getElementById("progress");
+const volume = document.getElementById("volume");
 
-playBtn.onclick=()=>{
+let isSeeking = false;
 
-if(audio.paused){
-audio.play();
-playBtn.textContent="⏸ Pause";
-}else{
-audio.pause();
-playBtn.textContent="▶ Play";
-}
-
+/* 播放 / 暫停 */
+playBtn.onclick = () => {
+    if(audio.paused){
+        audio.play();
+        playBtn.textContent = "⏸ Pause";
+    } else {
+        audio.pause();
+        playBtn.textContent = "▶ Play";
+    }
 };
 
-audio.addEventListener("timeupdate",()=>{
-
-progress.value=
-(audio.currentTime/audio.duration)*100||0;
-
+/* 進度更新（不卡拖曳） */
+audio.addEventListener("timeupdate", () => {
+    if(!isSeeking){
+        progress.value = (audio.currentTime / audio.duration) * 100 || 0;
+    }
 });
 
-progress.addEventListener("input",()=>{
-
-audio.currentTime=
-(progress.value/100)*audio.duration;
-
+/* 拖曳開始 */
+progress.addEventListener("mousedown", () => {
+    isSeeking = true;
 });
 
-volume.addEventListener("input",()=>{
+/* 拖曳結束 */
+progress.addEventListener("mouseup", () => {
+    isSeeking = false;
+    audio.currentTime = (progress.value / 100) * audio.duration;
+});
 
-audio.volume=volume.value;
+/* 手機支援 */
+progress.addEventListener("input", () => {
+    if(isSeeking){
+        audio.currentTime = (progress.value / 100) * audio.duration;
+    }
+});
 
+/* 音量 */
+volume.addEventListener("input", () => {
+    audio.volume = volume.value;
+});
+
+
+/* =======================
+   🌌 星空粒子（更順）
+======================= */
+const canvas = document.getElementById("bg");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let particles = [];
+
+class Particle {
+    constructor(){
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.vy = (Math.random() - 0.5) * 0.4;
+        this.r = Math.random() * 1.8;
+    }
+
+    update(){
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if(this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if(this.y < 0 || this.y > canvas.height) this.vy *= -1;
+    }
+
+    draw(){
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function init(){
+    for(let i = 0; i < 90; i++){
+        particles.push(new Particle());
+    }
+}
+
+function animate(){
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    for(let p of particles){
+        p.update();
+        p.draw();
+    }
+
+    requestAnimationFrame(animate);
+}
+
+init();
+animate();
+
+/* resize */
+window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 });
 
 </script>
