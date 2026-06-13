@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taurus Spotify Pro</title>
+<title>Taurus Music Clean</title>
 
 <style>
 body{
     margin:0;
-    background:#000;
     font-family:Arial;
+    background:#000;
     overflow:hidden;
     color:white;
 }
 
-/* 星空背景 */
+/* 🌌 背景 */
 canvas{
     position:fixed;
     top:0;
@@ -22,75 +22,96 @@ canvas{
     z-index:0;
 }
 
-/* 居中排版 */
-.wrapper{
+/* 主架構 */
+.app{
     position:relative;
     z-index:1;
+    display:flex;
     height:100vh;
+}
+
+/* 🎵 左側歌單 */
+.sidebar{
+    width:250px;
+    background:#0f0f0f;
+    padding:15px;
+}
+
+.song{
+    padding:10px;
+    margin-bottom:8px;
+    background:#1a1a1a;
+    border-radius:8px;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.song:hover{
+    background:#2a2a2a;
+}
+
+.song.active{
+    background:#1db954;
+    color:black;
+}
+
+/* 🎧 中間播放器 */
+.main{
+    flex:1;
     display:flex;
     justify-content:center;
     align-items:center;
 }
 
-/* Spotify 卡片 */
+/* 播放卡 */
 .player{
     width:340px;
     background:#121212;
-    border-radius:20px;
-    padding:22px;
+    padding:20px;
+    border-radius:18px;
     text-align:center;
-    box-shadow:0 0 40px rgba(0,0,0,0.8);
-    transition:0.25s;
-}
-
-.player:hover{
-    transform:translateY(-5px);
-    box-shadow:0 0 60px rgba(29,185,84,0.15);
+    box-shadow:0 0 30px rgba(0,0,0,0.8);
 }
 
 .cover{
-    width:250px;
-    height:250px;
-    border-radius:16px;
+    width:240px;
+    height:240px;
+    border-radius:14px;
     object-fit:cover;
-    box-shadow:0 10px 30px rgba(0,0,0,0.6);
 }
 
-h2{
-    margin:12px 0 5px;
-    font-size:20px;
-}
-
-/* 按鈕 */
 button{
-    margin-top:12px;
-    padding:10px 28px;
+    margin-top:10px;
+    padding:10px 20px;
     border:none;
     border-radius:999px;
-    cursor:pointer;
-    font-size:15px;
     background:#1db954;
-    color:black;
+    cursor:pointer;
     font-weight:bold;
-    transition:0.2s;
 }
 
-button:hover{
-    transform:scale(1.07);
-}
-
-/* 進度條（Spotify風格） */
 input[type=range]{
     width:100%;
-    margin-top:12px;
+    margin-top:10px;
     accent-color:#1db954;
 }
 
-/* 小標 */
-.label{
-    font-size:12px;
-    color:#aaa;
-    margin-top:10px;
+/* 🌈 音波 */
+.visualizer{
+    width:260px;
+    height:120px;
+    margin-left:20px;
+    display:flex;
+    align-items:flex-end;
+    gap:3px;
+}
+
+.bar{
+    width:4px;
+    background:#1db954;
+    border-radius:3px;
+    height:10px;
+    transition:0.05s;
 }
 </style>
 </head>
@@ -99,142 +120,211 @@ input[type=range]{
 
 <canvas id="bg"></canvas>
 
-<div class="wrapper">
+<div class="app">
+
+<!-- 🎵 歌單 -->
+<div class="sidebar" id="playlist"></div>
+
+<!-- 🎧 播放器 -->
+<div class="main">
 
 <div class="player">
+<img id="cover" class="cover">
+<h2 id="title">Taurus Music</h2>
 
-<img src="cover.png" class="cover">
-
-<h2>Taurus Music</h2>
-
-<audio id="audio" src="music.mp3"></audio>
+<audio id="audio"></audio>
 
 <button id="playBtn">▶ Play</button>
 
-<input type="range" id="progress" value="0">
+<input type="range" id="progress">
 
-<div class="label">Volume</div>
 <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
-
 </div>
 
+<!-- 音波 -->
+<div class="visualizer" id="viz"></div>
+
+</div>
 </div>
 
 <script>
 
-/* =======================
-   播放器（優化不卡頓）
-======================= */
-const audio = document.getElementById("audio");
-const playBtn = document.getElementById("playBtn");
-const progress = document.getElementById("progress");
-const volume = document.getElementById("volume");
+/* ======================
+   🎵 歌單資料
+====================== */
+const songs = [
+{ title:"Song 1", file:"music.mp3", cover:"cover.png" },
+{ title:"Song 2", file:"music2.mp3", cover:"cover.png" },
+{ title:"Song 3", file:"music3.mp3", cover:"cover.png" }
+];
 
-let isSeeking = false;
+/* ======================
+   UI 歌單
+====================== */
+const playlist=document.getElementById("playlist");
 
-/* 播放 / 暫停 */
-playBtn.onclick = () => {
+let current=0;
+
+songs.forEach((s,i)=>{
+    const div=document.createElement("div");
+    div.className="song";
+    div.textContent=s.title;
+
+    div.onclick=()=>load(i);
+
+    playlist.appendChild(div);
+});
+
+/* ======================
+   播放器
+====================== */
+const audio=document.getElementById("audio");
+const playBtn=document.getElementById("playBtn");
+const progress=document.getElementById("progress");
+const volume=document.getElementById("volume");
+const cover=document.getElementById("cover");
+const title=document.getElementById("title");
+
+function load(i){
+    current=i;
+
+    audio.src=songs[i].file;
+    cover.src=songs[i].cover;
+    title.textContent=songs[i].title;
+
+    audio.play();
+    playBtn.textContent="⏸ Pause";
+
+    document.querySelectorAll(".song").forEach((el,idx)=>{
+        el.classList.toggle("active", idx===i);
+    });
+}
+
+playBtn.onclick=()=>{
     if(audio.paused){
         audio.play();
-        playBtn.textContent = "⏸ Pause";
-    } else {
+        playBtn.textContent="⏸ Pause";
+    }else{
         audio.pause();
-        playBtn.textContent = "▶ Play";
+        playBtn.textContent="▶ Play";
     }
 };
 
-/* 進度更新（不卡拖曳） */
-audio.addEventListener("timeupdate", () => {
-    if(!isSeeking){
-        progress.value = (audio.currentTime / audio.duration) * 100 || 0;
-    }
+audio.addEventListener("timeupdate",()=>{
+    progress.value=(audio.currentTime/audio.duration)*100||0;
 });
 
-/* 拖曳開始 */
-progress.addEventListener("mousedown", () => {
-    isSeeking = true;
+audio.addEventListener("ended",()=>{
+    current=(current+1)%songs.length;
+    load(current);
 });
 
-/* 拖曳結束 */
-progress.addEventListener("mouseup", () => {
-    isSeeking = false;
-    audio.currentTime = (progress.value / 100) * audio.duration;
+progress.addEventListener("input",()=>{
+    audio.currentTime=(progress.value/100)*audio.duration;
 });
 
-/* 手機支援 */
-progress.addEventListener("input", () => {
-    if(isSeeking){
-        audio.currentTime = (progress.value / 100) * audio.duration;
-    }
+volume.addEventListener("input",()=>{
+    audio.volume=volume.value;
 });
 
-/* 音量 */
-volume.addEventListener("input", () => {
-    audio.volume = volume.value;
+/* ======================
+   🌈 音波
+====================== */
+const viz=document.getElementById("viz");
+
+const bars=[];
+for(let i=0;i<35;i++){
+    const b=document.createElement("div");
+    b.className="bar";
+    viz.appendChild(b);
+    bars.push(b);
+}
+
+const AudioContext=window.AudioContext||window.webkitAudioContext;
+const ctx=new AudioContext();
+
+const source=ctx.createMediaElementSource(audio);
+const analyser=ctx.createAnalyser();
+
+source.connect(analyser);
+analyser.connect(ctx.destination);
+
+analyser.fftSize=64;
+
+const data=new Uint8Array(analyser.frequencyBinCount);
+
+function render(){
+    requestAnimationFrame(render);
+
+    analyser.getByteFrequencyData(data);
+
+    bars.forEach((b,i)=>{
+        b.style.height=(data[i]||0)/2+"px";
+    });
+}
+
+render();
+
+/* 解鎖音訊 */
+document.body.addEventListener("click",()=>{
+    if(ctx.state==="suspended") ctx.resume();
 });
 
 
-/* =======================
-   🌌 星空粒子（更順）
-======================= */
-const canvas = document.getElementById("bg");
-const ctx = canvas.getContext("2d");
+/* ======================
+   🌌 星空
+====================== */
+const canvas=document.getElementById("bg");
+const c=canvas.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+canvas.width=innerWidth;
+canvas.height=innerHeight;
 
-let particles = [];
+let p=[];
 
-class Particle {
+class P{
     constructor(){
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.vx = (Math.random() - 0.5) * 0.4;
-        this.vy = (Math.random() - 0.5) * 0.4;
-        this.r = Math.random() * 1.8;
+        this.x=Math.random()*canvas.width;
+        this.y=Math.random()*canvas.height;
+        this.vx=(Math.random()-0.5)*0.3;
+        this.vy=(Math.random()-0.5)*0.3;
+        this.r=Math.random()*1.3;
     }
 
     update(){
-        this.x += this.vx;
-        this.y += this.vy;
-
-        if(this.x < 0 || this.x > canvas.width) this.vx *= -1;
-        if(this.y < 0 || this.y > canvas.height) this.vy *= -1;
+        this.x+=this.vx;
+        this.y+=this.vy;
+        if(this.x<0||this.x>canvas.width) this.vx*=-1;
+        if(this.y<0||this.y>canvas.height) this.vy*=-1;
     }
 
     draw(){
-        ctx.fillStyle = "white";
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle="white";
+        c.beginPath();
+        c.arc(this.x,this.y,this.r,0,Math.PI*2);
+        c.fill();
     }
 }
 
-function init(){
-    for(let i = 0; i < 90; i++){
-        particles.push(new Particle());
-    }
+for(let i=0;i<80;i++) p.push(new P());
+
+function anim(){
+    c.fillStyle="#000";
+    c.fillRect(0,0,canvas.width,canvas.height);
+
+    p.forEach(x=>{
+        x.update();
+        x.draw();
+    });
+
+    requestAnimationFrame(anim);
 }
 
-function animate(){
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+anim();
 
-    for(let p of particles){
-        p.update();
-        p.draw();
-    }
-
-    requestAnimationFrame(animate);
-}
-
-init();
-animate();
-
-/* resize */
-window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+window.addEventListener("resize",()=>{
+    canvas.width=innerWidth;
+    canvas.height=innerHeight;
 });
 
 </script>
