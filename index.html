@@ -574,3 +574,346 @@ document.getElementById("currentTime");
 
 const duration =
 document.getElementById("duration");
+
+/* ======================
+   播放控制
+====================== */
+
+playBtn.onclick = () => {
+
+    if(audio.paused){
+
+        audio.play();
+
+        playBtn.innerHTML = "❚❚";
+
+    }else{
+
+        audio.pause();
+
+        playBtn.innerHTML = "▶";
+
+    }
+
+};
+
+volume.oninput = () => {
+
+    audio.volume = volume.value;
+
+};
+
+audio.ontimeupdate = () => {
+
+    progress.value =
+    (audio.currentTime / audio.duration) * 100 || 0;
+
+    currentTime.textContent =
+    formatTime(audio.currentTime);
+
+    duration.textContent =
+    formatTime(audio.duration || 0);
+
+};
+
+progress.oninput = () => {
+
+    audio.currentTime =
+    (progress.value / 100) * audio.duration;
+
+};
+
+function formatTime(sec){
+
+    let m =
+    Math.floor(sec / 60) || 0;
+
+    let s =
+    Math.floor(sec % 60) || 0;
+
+    return m + ":" +
+    String(s).padStart(2,"0");
+}
+
+/* ======================
+   Audio Context
+====================== */
+
+const AudioContextClass =
+window.AudioContext ||
+window.webkitAudioContext;
+
+const audioCtx =
+new AudioContextClass();
+
+const source =
+audioCtx.createMediaElementSource(audio);
+
+const analyser =
+audioCtx.createAnalyser();
+
+source.connect(analyser);
+analyser.connect(audioCtx.destination);
+
+analyser.fftSize = 256;
+
+const dataArray =
+new Uint8Array(
+analyser.frequencyBinCount
+);
+
+document.body.addEventListener(
+"click",
+()=>{
+if(audioCtx.state==="suspended"){
+audioCtx.resume();
+}
+}
+);
+
+/* ======================
+   波形
+====================== */
+
+const wave =
+document.getElementById("wave");
+
+const wctx =
+wave.getContext("2d");
+
+wave.width = 320;
+wave.height = 90;
+
+function drawWave(){
+
+requestAnimationFrame(drawWave);
+
+analyser.getByteTimeDomainData(
+dataArray
+);
+
+wctx.clearRect(
+0,
+0,
+wave.width,
+wave.height
+);
+
+wctx.beginPath();
+
+wctx.strokeStyle =
+"#1db954";
+
+wctx.lineWidth = 3;
+
+let slice =
+wave.width /
+dataArray.length;
+
+let x = 0;
+
+for(
+let i=0;
+i<dataArray.length;
+i++
+){
+
+let v =
+dataArray[i] / 128;
+
+let y =
+v *
+wave.height / 2;
+
+if(i===0){
+
+wctx.moveTo(x,y);
+
+}else{
+
+wctx.lineTo(x,y);
+
+}
+
+x += slice;
+
+}
+
+wctx.stroke();
+
+}
+
+drawWave();
+
+/* ======================
+   環繞音波
+====================== */
+
+const spectrum =
+document.getElementById(
+"spectrum"
+);
+
+const sctx =
+spectrum.getContext("2d");
+
+spectrum.width = 430;
+spectrum.height = 720;
+
+function drawSpectrum(){
+
+requestAnimationFrame(
+drawSpectrum
+);
+
+analyser.getByteFrequencyData(
+dataArray
+);
+
+sctx.clearRect(
+0,
+0,
+spectrum.width,
+spectrum.height
+);
+
+const cx = 215;
+const cy = 360;
+
+const cardW = 310;
+const cardH = 600;
+
+for(
+let i=0;
+i<120;
+i++
+){
+
+let value =
+dataArray[
+i %
+dataArray.length
+];
+
+let length =
+value * 0.35;
+
+let x,y,dx,dy;
+
+if(i<30){
+
+x =
+cx-cardW/2+
+(i/30)*cardW;
+
+y =
+cy-cardH/2;
+
+dx=0;
+dy=-1;
+
+}
+else if(i<60){
+
+x =
+cx+cardW/2;
+
+y =
+cy-cardH/2+
+((i-30)/30)*cardH;
+
+dx=1;
+dy=0;
+
+}
+else if(i<90){
+
+x =
+cx+cardW/2-
+((i-60)/30)*cardW;
+
+y =
+cy+cardH/2;
+
+dx=0;
+dy=1;
+
+}
+else{
+
+x =
+cx-cardW/2;
+
+y =
+cy+cardH/2-
+((i-90)/30)*cardH;
+
+dx=-1;
+dy=0;
+
+}
+
+sctx.beginPath();
+
+sctx.strokeStyle =
+"#1db954";
+
+sctx.lineWidth = 6;
+
+sctx.lineCap =
+"round";
+
+sctx.moveTo(x,y);
+
+sctx.lineTo(
+x + dx*length,
+y + dy*length
+);
+
+sctx.stroke();
+
+}
+
+}
+
+drawSpectrum();
+
+/* ======================
+   封面模糊光暈
+====================== */
+
+audio.onplay = ()=>{
+
+document
+.querySelector(".cover-wrap")
+.style.filter =
+"drop-shadow(0 0 40px #1db954)";
+
+};
+
+audio.onpause = ()=>{
+
+document
+.querySelector(".cover-wrap")
+.style.filter =
+"none";
+
+};
+
+/* ======================
+   視窗縮放
+====================== */
+
+window.addEventListener(
+"resize",
+()=>{
+
+location.reload();
+
+}
+);
+
+</script>
+
+</body>
+</html>
